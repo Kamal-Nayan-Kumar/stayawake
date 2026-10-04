@@ -1,0 +1,5 @@
+.DS_Store
+StayAwake.app/
+verify
+*.o
+build/

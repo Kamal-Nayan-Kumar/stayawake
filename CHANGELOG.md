@@ -2,6 +2,11 @@
 
 All notable changes to StayAwake are recorded here.
 
+## Unreleased
+
+- Dropped the LICENSE and CONTRIBUTING files. The ground rules for changes now
+  live in the README.
+
 ## 1.1.0
 
 ### Added

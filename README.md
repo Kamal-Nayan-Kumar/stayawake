@@ -7,7 +7,7 @@ You use this instead of walking into System Settings every time. Omarchy has a b
 It is built for people who leave long jobs running on their Mac, especially coding agents that have to survive the night.
 
 - No `sudo`, no System Settings changes, no background service, no network access.
-- No dependencies. Two files of Swift and a build script.
+- No dependencies. A few Swift files and a build script.
 - Quit the app and your Mac goes back to normal sleep. There is no stale setting to clean up.
 
 ## What the menu does
@@ -202,7 +202,7 @@ The app icon is drawn in code rather than checked in as binary art, so it stays 
 swift Tools/make-icon.swift
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the ground rules. They are short: no dependencies, no network access, no `sudo`.
+The ground rules if you change something: no dependencies, no network access, no `sudo`, and keep the macOS deployment target at 13.0.
 
 ## Troubleshooting
 
@@ -219,7 +219,3 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the ground rules. They are short: no 
 ## Changelog
 
 See [CHANGELOG.md](CHANGELOG.md).
-
-## License
-
-MIT. See [LICENSE](LICENSE).

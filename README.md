@@ -1,12 +1,73 @@
 # StayAwake
 
-A macOS menu bar toggle that keeps your Mac awake. Click once to stay awake,
-click again to sleep normally.
+A macOS menu bar toggle that keeps your Mac awake. Click once to stay awake, click again to sleep normally.
 
-You use this instead of walking into System Settings every time. Omarchy has a
-built-in stay-awake toggle; this is the same idea for a stock Mac.
+You use this instead of walking into System Settings every time. Omarchy has a built-in stay-awake toggle, this is the same idea for a stock Mac.
+
+It is built for people who leave long jobs running on their Mac, especially coding agents that have to survive the night.
+
+- No `sudo`, no System Settings changes, no background service, no network access.
+- No dependencies. Two files of Swift and a build script.
+- Quit the app and your Mac goes back to normal sleep. There is no stale setting to clean up.
+
+## What the menu does
+
+Click the cup in the menu bar (top right) to open the menu.
+
+| Menu item | What it does |
+|---|---|
+| **Stay Awake** | The main switch. On means the Mac will not go to sleep on its own. Off means it sleeps as usual. |
+| **Allow Screen to Sleep** | Only usable while Stay Awake is on. Lets the screen go dark on the normal timer while the Mac stays up. |
+| **Launch at Login** | Starts StayAwake when you log in, so it is already holding the Mac awake by the time your agent starts. |
+| **Quit StayAwake** | Quits the app. |
+
+Underneath the toggles there is a line of text saying what the Mac is doing right now, so the menu is never ambiguous. The icon in the menu bar changes to match: a sleeping moon when the Mac sleeps, a sun when everything is held on, a coffee cup when the Mac is running but the screen is free to rest.
+
+## Keep the Mac awake, screen off
+
+Yes, this is what you want for overnight agent runs, and it is a supported mode.
+
+Turn on **Stay Awake**, then turn on **Allow Screen to Sleep**.
+
+| Mode | Mac stays awake | Screen stays on | Good for |
+|---|---|---|---|
+| Stay Awake off | no | no | Normal use. |
+| Stay Awake on | yes | yes | Working at the desk, long downloads, a build you are watching. |
+| Stay Awake on, Allow Screen to Sleep on | yes | no | Overnight agent runs. The screen goes dark on its own, the machine keeps working. |
+
+How it works under the hood: the Mac is held awake with `kIOPMAssertionTypePreventUserIdleSystemSleep`, and the screen is held on with a second assertion, `kIOPMAssertionTypePreventUserIdleDisplaySleep`. "Allow Screen to Sleep" simply drops that second one. The machine keeps running, the display is free to sleep.
+
+A few things worth knowing about that mode:
+
+- The screen still wakes up when you move the mouse or press a key. "Allow Screen to Sleep" means the display is not held on forever, not that the display is off.
+- The screen goes dark on your normal display timer (System Settings › Displays › Advanced › Turn display off on power adapter when inactive, usually 5 minutes).
+- Locking the screen is separate and does not stop the Mac. `Ctrl Cmd Q` locks it, the Mac keeps running, and command line agents keep going.
+- Closing the lid still forces the Mac to sleep. That overrides everything here. It only matters on a MacBook.
 
 ## Install
+
+### Download a build
+
+Grab it from the [releases page](https://github.com/Kamal-Nayan-Kumar/stayawake/releases):
+
+| Your Mac | Download |
+|---|---|
+| Apple Silicon (M1, M2, M3, M4...) | `StayAwake-arm64.zip` |
+| Intel | `StayAwake-x86_64.zip` |
+
+Unzip it, then drag `StayAwake.app` into your Applications folder.
+
+macOS will not open an app that was not notarized, so the first time, right-click `StayAwake.app` in Applications and choose **Open**. After that it opens normally like any other app.
+
+### Build it yourself
+
+You need Xcode or the Command Line Tools:
+
+```bash
+xcode-select --install
+```
+
+Then:
 
 ```bash
 git clone https://github.com/Kamal-Nayan-Kumar/stayawake.git
@@ -16,62 +77,37 @@ cp -R StayAwake.app /Applications/
 open /Applications/StayAwake.app
 ```
 
-A coffee cup appears in your menu bar (top right). It starts **off**, meaning
-your Mac sleeps as usual.
+The build signs the app with an ad-hoc signature, so no developer account is needed.
 
-Building needs Xcode or the Command Line Tools:
+If you have Xcode, you can also open `Package.swift` and run it from there.
+
+### Uninstall
 
 ```bash
-xcode-select --install
+rm -R /Applications/StayAwake.app
 ```
+
+There are no settings to undo, which is the point.
 
 ## Use it
 
-Click the cup:
+Turn on **Launch at Login** first. After that, StayAwake is already holding the Mac awake the next time you log in, which is what you want if a long job is waiting to start.
 
-| Menu item | What it does |
-|---|---|
-| **Stay Awake** | Main toggle. On = Mac won't sleep. Off = normal sleep. |
-| **Allow Screen to Sleep** | Only active while Stay Awake is on. Lets a long job run overnight without a bright screen all night. |
-| **Launch at Login** | Start it automatically on boot. |
-| **Quit StayAwake** | Quit the app. |
+Then turn on **Stay Awake**.
 
-A line of text under the toggles shows the current state, so the menu is never
-ambiguous. The icon also changes: a filled moon when awake, a plain cup when
-sleeping.
+The app remembers how you left it. Quit it, reopen it, reboot, and it comes back the way you set it up.
 
-## Why it is built this way
-
-It uses the same power-assertion API that `caffeinate` and Linux's stay-awake
-tools use. That means:
-
-- **No `sudo`.** Nothing is written to System Settings, and no permanent
-  setting is changed.
-- **It cannot leave your Mac stuck awake.** The assertion belongs to the app
-  process. Quit StayAwake, force quit it, or let it crash, and macOS drops the
-  assertion and resumes normal sleep. There is no stale setting to clean up
-  later.
-- **Screen lock is unaffected.** It only controls *idle* sleep, so your login
-  and password behave normally.
-
-### Turning the display off too
-
-If you want it to behave like a standard sleep-preventing tool rather than
-holding the display on, macOS offers a matching command:
+To check that the Mac really is being held awake while the app is open:
 
 ```bash
-caffeinate -dimsu
+pmset -g assertions
 ```
 
-`-d` display, `-i` idle, `-m` disk, `-s` system sleep on AC power, `-u` declares
-the user active. StayAwake does the same job through a clickable icon.
+Look for `StayAwake` listed under the owning process.
 
 ## Running agents overnight
 
-StayAwake solves one problem, and it is the easy one. The thing that actually
-kills long-running jobs is the **process dying**, which sleep prevention cannot
-help with. A closed terminal, a dropped SSH session, or a logout will end an
-agent mid-task.
+StayAwake solves one problem, and it is the easy one. The thing that actually kills long-running jobs is the **process dying**, which sleep prevention cannot help with. A closed terminal, a dropped SSH session, or a logout will end an agent mid-task.
 
 Run agents in a detached session so they survive that:
 
@@ -83,94 +119,107 @@ screen -S agents     # start a named session
 screen -r agents     # reattach later
 ```
 
-`screen` ships with macOS; `tmux` does not.
+`screen` ships with macOS. `tmux` does not.
+
+For a full overnight setup, use all three:
+
+1. StayAwake on, with **Launch at Login** enabled, and **Allow Screen to Sleep** on if you do not want a bright screen all night
+2. Agents running in `screen`
+3. `autorestartatconnect 1`, plus a UPS
 
 ### Power outages
 
-This is the part that catches people out. If the power goes out, your Mac will
-**not** come back by itself unless this is on:
+This is the part that catches people out. If the power goes out, your Mac will **not** come back by itself unless this is on:
 
 ```bash
 sudo pmset autorestartatconnect 1
 ```
 
-Check your current setting with `pmset -g | grep autorestart`. If it is `0`,
-nothing comes back after an outage and any overnight job stays dead until
-someone presses the power button.
+Check your current setting with `pmset -g | grep autorestart`. If it is `0`, nothing comes back after an outage and any overnight job stays dead until someone presses the power button.
 
-For genuinely unattended operation, combine all three:
+The UPS is the highest value piece. Without one, a brief flicker can still kill a run, and a UPS also lets macOS ride out short dips without shutting down at all.
 
-1. StayAwake on, with **Launch at Login** enabled
-2. Agents running in `screen`
-3. `autorestartatconnect 1`, plus a **UPS**
+## How it works
 
-The UPS is the highest-value piece. Without one, a brief flicker can still kill
-a run, and a UPS also lets macOS ride out short dips without shutting down at
-all.
+Two power assertions, held by the app process:
 
-### Lid close
+- `kIOPMAssertionTypePreventUserIdleSystemSleep` keeps the machine running.
+- `kIOPMAssertionTypePreventUserIdleDisplaySleep` keeps the screen lit.
 
-Closing the lid overrides sleep prevention. On a Mac mini there is no lid, so
-this only matters if you put a MacBook to sleep on the same Keep Awake setup.
+They are the same API that `caffeinate` and the Linux stay-awake tools use. That means:
+
+- **No `sudo`.** Nothing is written to System Settings, and no permanent setting is changed.
+- **It cannot leave your Mac stuck awake.** The assertion belongs to the app process. Quit StayAwake, force quit it, or let it crash, and macOS drops the assertion and resumes normal sleep. There is no stale setting to clean up later.
+- **Screen lock is unaffected.** It only controls *idle* sleep, so your login and password behave normally.
+
+If you would rather use a command line tool, `caffeinate -dimsu` does the same job:
+
+- `-d` display, `-i` idle, `-m` disk, `-s` system sleep on AC power, `-u` declares the user active.
 
 ## Verify it works
 
-`verify.swift` checks the mechanism on your machine. It takes an assertion,
-confirms macOS reports `PreventUserIdleSystemSleep` as `1`, releases it, and
-confirms it is gone:
+`Tools/verify.swift` checks the mechanism on your machine. It takes an assertion, confirms macOS reports it by name, releases it, and confirms it is gone:
 
 ```bash
-swiftc -O -o verify verify.swift && ./verify
+swiftc -O -o verify Tools/verify.swift && ./verify
 ```
 
 Expected output ends with:
 
 ```
-RESULT: PASS — mechanism works
+RESULT: PASS - mechanism works
 ```
 
-You can also watch it live while using the app:
+## Development
 
 ```bash
-pmset -g assertions
+git clone https://github.com/Kamal-Nayan-Kumar/stayawake.git
+cd stayawake
+./test.sh
 ```
 
-Look for `StayAwake` listed under the owning process.
+`./test.sh` builds the app, checks the bundle it produced, verifies that macOS accepts and releases the assertion, then launches the app and checks that it really holds the assertion and gives it up when it quits.
 
-## Build after editing
+Layout:
+
+```
+Sources/
+  StayAwakeApp.swift   the app and its menu bar scene
+  PowerKeeper.swift    the power assertions
+  LaunchAtLogin.swift  the login item
+  MenuBarContent.swift the menu
+  Settings.swift       the state the app remembers
+Tools/
+  make-icon.swift      draws the app icon
+  verify.swift         checks the assertion mechanism
+build.sh               builds StayAwake.app
+test.sh                builds and checks everything
+```
+
+The app icon is drawn in code rather than checked in as binary art, so it stays reviewable in a diff:
 
 ```bash
-./build.sh
-cp -R StayAwake.app /Applications/
+swift Tools/make-icon.swift
 ```
 
-Ad-hoc signed, so no developer account is needed. If macOS still blocks it,
-right-click the app and choose **Open** once.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the ground rules. They are short: no dependencies, no network access, no `sudo`.
 
-The build targets Apple Silicon (`arm64`). For Intel, change the `-target` flag
-in `build.sh`.
+## Troubleshooting
 
-## Uninstall
+**The menu bar icon is not there.** Open Applications › StayAwake to launch it. It has no window and no dock icon, so it can look like it did not start. Check with `pgrep -fl StayAwake`.
 
-```bash
-rm -R /Applications/StayAwake.app
-```
+**macOS says the app is damaged.** It is not notarized. Right-click it in Applications and choose **Open** once.
 
-No settings to undo, which is the point.
+**Launch at Login does nothing.** macOS may be blocking it. Look under System Settings › General › Login Items. If it is listed there but disabled, turn it on. If it is not there at all, move StayAwake to Applications and toggle it again.
 
-## How it works
+**A red line in the menu.** The app could not take the power assertion. Check Privacy & Security permissions.
 
-Two files:
+**The Mac still sleeps.** Check that Stay Awake is on and that the line under the toggles says the Mac is awake. Then run `pmset -g assertions` and look for StayAwake. If it is not listed, the app could not take the assertion and the menu will be showing you why.
 
-- `StayAwakeApp.swift` — a `MenuBarExtra` SwiftUI app. It calls
-  `IOPMAssertionCreateWithName` to hold a
-  `kIOPMAssertionTypePreventUserIdleSystemSleep` assertion, and
-  `kIOPMAssertionTypePreventUserIdleDisplaySleep` for the display, then
-  releases them when you switch it off.
-- `build.sh` — compiles it with `swiftc` and assembles the `.app` bundle.
+## Changelog
 
-No dependencies, no network access, no background service.
+See [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
-MIT
+MIT. See [LICENSE](LICENSE).

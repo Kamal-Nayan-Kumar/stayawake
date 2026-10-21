@@ -9,11 +9,13 @@
 	<key>CFBundleIdentifier</key>
 	<string>com.nayan.stayawake</string>
 	<key>CFBundleVersion</key>
-	<string>1.0</string>
+	<string>1.1.0</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0</string>
+	<string>1.1.0</string>
 	<key>CFBundleExecutable</key>
 	<string>StayAwake</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>LSMinimumSystemVersion</key>
@@ -21,6 +23,6 @@
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSHumanReadableCopyright</key>
-	<string>Local tool. No background service, no network.</string>
+	<string>Copyright © 2026 Kamal Nayan Kumar. MIT licensed.</string>
 </dict>
 </plist>
